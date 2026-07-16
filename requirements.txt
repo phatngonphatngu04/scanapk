@@ -4,3 +4,4 @@ python-multipart
 quark-engine
 apkid
 gradio
+requests
