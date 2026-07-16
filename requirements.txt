@@ -1,0 +1,6 @@
+fastapi
+uvicorn
+python-multipart
+quark-engine
+apkid
+gradio
