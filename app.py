@@ -45,26 +45,33 @@ def scan_apk(file_path):
     if not file_path:
         return {"error": "Vui lòng tải lên một tệp APK hợp lệ."}
     
-    rules_dir = check_and_download_rules()
+    # Kiểm tra dung lượng file (tính bằng MB)
+    file_size_mb = os.path.getsize(file_path) / (1024 * 1024)
     
-    # 1. Trích xuất quyền & Quét VirusTotal
+    # Bước 1: Trích xuất quyền & Quét VirusTotal (Khối lượng nhẹ, chạy được với file lớn)
     file_hash = get_file_hash(file_path)
     vt_report = check_virustotal(file_hash)
     permissions = extract_permissions(file_path)
-
-    # 2. Quét APKiD
+    
+    # Bước 2: Quét APKiD (Nhẹ, chạy bình thường)
     try:
         apkid_process = subprocess.run(['apkid', file_path], capture_output=True, text=True, timeout=60)
         apkid_result = apkid_process.stdout + apkid_process.stderr
     except Exception as e:
         apkid_result = f"LỖI APKiD: {str(e)}"
 
-    # 3. Quét Quark
-    try:
-        quark_process = subprocess.run(['quark', '-a', file_path, '-r', rules_dir, '-s'], capture_output=True, text=True, timeout=120)
-        quark_result = quark_process.stdout + quark_process.stderr
-    except Exception as e:
-        quark_result = f"LỖI QUARK: {str(e)}"
+    # Bước 3: Quét Quark (Rất nặng, CHỈ quét nếu file < 40MB)
+    quark_result = ""
+    if file_size_mb <= 40:
+        rules_dir = check_and_download_rules()
+        try:
+            quark_process = subprocess.run(['quark', '-a', file_path, '-r', rules_dir, '-s'], capture_output=True, text=True, timeout=180)
+            quark_result = quark_process.stdout + quark_process.stderr
+        except Exception as e:
+            quark_result = f"LỖI QUARK: {str(e)}"
+    else:
+        # Trả về chuỗi giả lập báo cáo rỗng để Frontend không bị lỗi logic
+        quark_result = "[!] CẢNH BÁO: File quá lớn (>40MB). Hệ thống bỏ qua phân tích Quark-Engine để bảo vệ máy chủ. Vui lòng dựa vào kết quả của VirusTotal."
 
     return {
         "vt_report": vt_report,
